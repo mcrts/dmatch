@@ -13,7 +13,7 @@ Lille University Hospital.
 ## Installation
 As the project is still under development we recommend an installation in editable mode.
 ```bash
-git clone <github url> dmatch
+git clone https://github.com/mcrts/dmatch dmatch
 pip install -e dmatch/
 ```
 This will download the package source code into a dmatch directory, and install it in editable mode.
