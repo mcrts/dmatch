@@ -1,0 +1,7 @@
+[MIMIC3]
+user = <USER>
+password = <PASSWORD>
+host = <HOST>
+port = 5432
+service = mimic
+uri = postgresql://${MIMIC3:user}:${MIMIC3:password}@${MIMIC3:host}:${MIMIC3:port}/${MIMIC3:service}
