@@ -1,5 +1,6 @@
-## Basic Overview
+<img src="icon.png" width="64">
 
+## Basic Overview
 Distribution Matching is an Instance-Based Ontology Matching Technique.
 Two terminologies can be align by comparing the distribution of term values.
 
