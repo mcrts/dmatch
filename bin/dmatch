@@ -115,7 +115,6 @@ def align_cmd(args):
     check_datasource(args.id2)
 
     dst = os.path.relpath(args.dst)
-    check_purge_path(dst)
     index1 = os.path.join(dst, 'index1')
     index2 = os.path.join(dst, 'index2')
 

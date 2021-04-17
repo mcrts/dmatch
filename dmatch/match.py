@@ -18,15 +18,25 @@ def make_report(row):
     entityA, entityB = row.name
     metadataA = Accessor.get_entity_metadata(entityA)
     metadataB = Accessor.get_entity_metadata(entityB)
-    result = pd.concat([metadataA.add_suffix("A"), metadataB.add_suffix("B")], axis=0)
+    result = pd.concat([pd.Series({'Probability': row.ProbabilityTrue}), metadataA.add_suffix("A"), metadataB.add_suffix("B")], axis=0)
     return result
 
 def match(index, modelpath):
     log.info(f'Load model {modelpath}')
     model = load(modelpath)
-    df = pd.read_csv(os.path.join(index, 'correspondances_scored.csv'), **CSV_READ_FORMAT, index_col=[0, 1])
+    df = pd.read_csv(os.path.join(index, 'scores.csv'), **CSV_READ_FORMAT, index_col=[0, 1])
     log.info('Evaluate alignment')
-    df['Prediction'] = model.predict(df)
+
+    prediction = model.predict(df)
+    probability_rate = model.predict_proba(df)
+    probability_true = probability_rate[:,1]
+    probability_false = probability_rate[:,0]
+
+    df['Prediction'] = prediction
+    df['ProbabilityTrue'] = probability_true
+    df['ProbabilityFalse'] = probability_false
+
+    df[['Prediction', 'ProbabilityTrue', 'ProbabilityFalse']].to_csv(os.path.join(index, 'predictions.csv'), **CSV_WRITE_FORMAT)
     alignement = df[df.Prediction == True]
     reportpath = os.path.join(index, 'alignement_report.csv')
     log.info(f'Build report {reportpath}')
