@@ -56,11 +56,16 @@ def compute_scaled_ks_test(row):
 
 def process(folder):
     df = pd.read_csv(os.path.join(folder, 'correspondances.csv'), **CSV_READ_FORMAT)
-    ddf = dd.from_pandas(df, npartitions=32)
+    ddf = dd.from_pandas(df, npartitions=16)
 
     log.info('Computing aggregates')
     with ProgressBar():
-        res = ddf.apply(compute_aggregates, meta={'mean': float, 'std': float, 'var': float, 'frequency': float}, result_type='expand', axis=1).compute(scheduler='multiprocessing') 
+        res = ddf.apply(
+            compute_aggregates,
+            meta={'mean': float, 'std': float, 'var': float, 'frequency': float},
+            result_type='expand',
+            axis=1
+        ).compute(scheduler='multiprocessing') 
     df['mean'] = res['mean']
     df['std'] = res['std']
     df['var'] = res['var']

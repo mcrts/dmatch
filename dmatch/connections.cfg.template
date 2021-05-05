@@ -4,4 +4,14 @@ password = <PASSWORD>
 host = <HOST>
 port = 5432
 service = mimic
-uri = postgresql://${MIMIC3:user}:${MIMIC3:password}@${MIMIC3:host}:${MIMIC3:port}/${MIMIC3:service}
+uri = postgresql://${user}:${password}@${host}:${port}/${service}
+
+
+[ORACLE]
+user = <USER>
+password = <PASSWORD>
+host = <HOST>
+port = 1521
+service = <SERVICE_NAME>
+uri = oracle+cx_oracle://${user}:${password}@(DESCRIPTION = (ADDRESS = (PROTOCOL = TCP)(HOST = ${host})(PORT = ${port})) (CONNECT_DATA = (SERVICE_NAME = ${service})))
+

@@ -105,7 +105,9 @@ class Stats:
         else:
             value, error = cls.hellinger_integral(p.pdf, q.pdf, a, b)
 
-        if value > 1: # To prevent computing a negative root because of an approximation error during integration
+        if 1 <= value < 1.1: # To prevent computing a negative root because of an approximation error during integration
+            return 1
+        elif 1.1 <= value: # If value > 1.1 the approximation failed too much and should not be rejected
             return 0
         else:
             return np.sqrt(1 - value)
@@ -228,6 +230,24 @@ class CachedAccessor:
         return data
 
 
+class Score:
+    @staticmethod
+    def tm_rank(groupby, ret=5):
+        return groupby.sort_values('y_proba', ascending=False).head(ret).Y.any()
+
+    @staticmethod
+    def tm_score(df, ret=5):
+        res = df.groupby('entityA').apply(Score.tm_rank, ret=ret)
+        n = len(df.index.get_level_values('entityA').unique())
+        return res.value_counts().get(True, 0) / n
+    
+    @staticmethod
+    def tm_score_relaxed(df, ret=5):
+        res = df.groupby('entityA').apply(Score.tm_rank, ret=ret)
+        n = len(df[df.Y == True].index.get_level_values('entityA').unique())
+        return res.value_counts().get(True, 0) / n
+
+
 class NamedFeatureSelector(SelectorMixin, TransformerMixin):
     def __init__(self, columns, selected_columns):
         self.columns = columns
@@ -239,3 +259,54 @@ class NamedFeatureSelector(SelectorMixin, TransformerMixin):
     
     def fit(self, X, y=None):
         return self
+
+
+from sklearn.utils import resample
+from sklearn.metrics import f1_score, precision_score, recall_score
+from scipy.stats import t
+
+class Bootstrap:
+    @staticmethod
+    def sample(df, rate=1):
+        n = int(len(df.index) * rate)
+        return resample(df, n_samples=n)
+    
+    @staticmethod
+    def evaluate(model, data):
+        X = data.drop('Y', axis=1)
+        Y = data['Y']
+        Y_pred = model.predict(X)
+        df = data.copy()
+        df['y_proba'] = model.predict_proba(X)[:,1]
+        
+        stats = (f1_score(Y, Y_pred), precision_score(Y, Y_pred), recall_score(Y, Y_pred), Score.tm_score(df), Score.tm_score_relaxed(df))
+        return stats
+    
+    @staticmethod
+    def score(model, df, rep=1000, rate=1):
+        statistics = []
+        for i in range(rep):
+            if i % 50 == 0:   
+                log.info(f"Bootstrap iteration {i} over {rep}")
+
+            test = Bootstrap.sample(df, rate)
+            stat = Bootstrap.evaluate(model, test)
+            statistics.append(stat)
+        
+        statistics = np.array(statistics)
+        results = dict()
+        for name, stats in zip(['f1', 'precision', 'recall', 'TM', 'TM_relaxed'], statistics.T):
+            mu = stats.mean()
+            std = stats.std()
+            alpha = 0.05
+            st = (mu - stats) / std
+            q1 = mu - np.quantile(st, 1-0.5*alpha)*std
+            q2 = mu - np.quantile(st, 0.5*alpha)*std
+            results[name] = {
+                'mean': mu,
+                'std': std,
+                'CI': 1-alpha,
+                'lower': q1,
+                'upper': q2,
+            }
+        return results
