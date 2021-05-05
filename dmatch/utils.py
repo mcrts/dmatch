@@ -276,10 +276,7 @@ class Bootstrap:
         X = data.drop('Y', axis=1)
         Y = data['Y']
         Y_pred = model.predict(X)
-        df = data.copy()
-        df['y_proba'] = model.predict_proba(X)[:,1]
-        
-        stats = (f1_score(Y, Y_pred), precision_score(Y, Y_pred), recall_score(Y, Y_pred), Score.tm_score(df), Score.tm_score_relaxed(df))
+        stats = (f1_score(Y, Y_pred), precision_score(Y, Y_pred), recall_score(Y, Y_pred))
         return stats
     
     @staticmethod
@@ -295,7 +292,7 @@ class Bootstrap:
         
         statistics = np.array(statistics)
         results = dict()
-        for name, stats in zip(['f1', 'precision', 'recall', 'TM', 'TM_relaxed'], statistics.T):
+        for name, stats in zip(['f1', 'precision', 'recall'], statistics.T):
             mu = stats.mean()
             std = stats.std()
             alpha = 0.05
