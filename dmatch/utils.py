@@ -246,6 +246,14 @@ class Score:
         res = df.groupby('entityA').apply(Score.tm_rank, ret=ret)
         n = len(df[df.Y == True].index.get_level_values('entityA').unique())
         return res.value_counts().get(True, 0) / n
+    
+    @staticmethod
+    def compute_tm_score(model, df, ret=5):
+        df = df.copy()
+        df['y_proba'] = model.predict_proba(df.X)[:,1]
+        res = df.groupby('entityA').apply(Score.tm_rank, ret=ret)
+        n = len(df[df.Y == True].index.get_level_values('entityA').unique())
+        return res.value_counts().get(True, 0) / n
 
 
 class NamedFeatureSelector(SelectorMixin, TransformerMixin):
