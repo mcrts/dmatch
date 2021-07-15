@@ -284,14 +284,14 @@ class Bootstrap:
         X = data.drop('Y', axis=1)
         Y = data['Y']
         Y_pred = model.predict(X)
-        stats = (f1_score(Y, Y_pred), precision_score(Y, Y_pred), recall_score(Y, Y_pred))
+        stats = (f1_score(Y, Y_pred, zero_division=0), precision_score(Y, Y_pred, zero_division=0), recall_score(Y, Y_pred, zero_division=0))
         return stats
     
     @staticmethod
-    def score(model, df, rep=1000, rate=1):
+    def score(model, df, rep=1000, rate=1, verbose=False):
         statistics = []
         for i in range(rep):
-            if i % 50 == 0:   
+            if verbose and (i % 50 == 0):   
                 log.info(f"Bootstrap iteration {i} over {rep}")
 
             test = Bootstrap.sample(df, rate)
@@ -304,9 +304,12 @@ class Bootstrap:
             mu = stats.mean()
             std = stats.std()
             alpha = 0.05
-            st = (mu - stats) / std
-            q1 = mu - np.quantile(st, 1-0.5*alpha)*std
-            q2 = mu - np.quantile(st, 0.5*alpha)*std
+            if std > 0:
+                st = (mu - stats) / std
+                q1 = mu - np.quantile(st, 1-0.5*alpha)*std
+                q2 = mu - np.quantile(st, 0.5*alpha)*std
+            else:
+                q1 = q2 = mu
             results[name] = {
                 'mean': mu,
                 'std': std,
