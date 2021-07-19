@@ -27,6 +27,11 @@ index_parser = subparsers.add_parser(
     help='extract terminology and sample data from source into an index',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
+train_test_split_parser = subparsers.add_parser(
+    'train_test_split',
+    help='split index into train and test indexes',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
 preprocess_parser = subparsers.add_parser(
     'preprocess',
     help='preprocess the index by filtering terminology and computing KDEs',
@@ -78,6 +83,38 @@ index_parser.add_argument(
 )
 index_parser.add_argument('-n', type=int, default=1000, help='sampling size')
 index_parser.set_defaults(func=index_cmd)
+
+
+# TRAIN_TEST_SPLIT SUBCOMMAND
+def train_test_split_cmd(args):
+    src = os.path.relpath(args.src)
+    train_dst = src + "_train"
+    test_dst = src + "_test"
+    r = args.r
+    if not os.path.exists(src):
+        raise FileNotFoundError(
+            errno.ENOENT, os.strerror(errno.ENOENT), src
+        )
+    if os.path.exists(train_dst):
+        log.info(f'Destination folder {train_dst} already exists and will be erased')
+        shutil.rmtree(train_dst)
+    if os.path.exists(test_dst):
+        log.info(f'Destination folder {test_dst} already exists and will be erased')
+        shutil.rmtree(test_dst)
+    resample.make_train_test(src, train_dst, test_dst, r)
+
+def probability_type(arg):
+    try:
+        val = float(arg)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid value for float range (0, 1): {arg}")
+    if not (0 <= val <= 1):
+        raise argparse.ArgumentTypeError(f"{val} not in range (0, 1)")
+    return val
+
+train_test_split_parser.add_argument('src', help='path to source index to split from (dst will be <src>_train, <src>_test)')
+train_test_split_parser.add_argument('-r', type=probability_type, default=0.7, help='train sample size ratio')
+train_test_split_parser.set_defaults(func=train_test_split_cmd)
 
 
 # PREPROCESS SUBCOMMAND

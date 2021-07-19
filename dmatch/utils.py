@@ -236,30 +236,46 @@ class Score:
         return groupby.sort_values('y_proba', ascending=False).head(ret).Y.any()
 
     @staticmethod
-    def tm_score(df, ret=5):
-        res = df.groupby('entityA').apply(Score.tm_rank, ret=ret)
-        n = len(df.index.get_level_values('entityA').unique())
+    def tm_score(df, groupby_key, ret=5):
+        res = df.groupby(groupby_key).apply(Score.tm_rank, ret=ret)
+        n = len(df.index.get_level_values(groupby_key).unique())
         return res.value_counts().get(True, 0) / n
     
     @staticmethod
-    def tm_score_relaxed(df, ret=5):
-        res = df.groupby('entityA').apply(Score.tm_rank, ret=ret)
-        n = len(df[df.Y == True].index.get_level_values('entityA').unique())
+    def tm_score_relaxed(df, groupby_key, ret=5):
+        res = df.groupby(groupby_key).apply(Score.tm_rank, ret=ret)
+        n = len(df[df.Y == True].index.get_level_values(groupby_key).unique())
         return res.value_counts().get(True, 0) / n
     
     @staticmethod
-    def compute_tm_score(model, df, ret=5):
+    def compute_tm_score(model, df, groupby_key, ret=5):
         df = df.copy()
         df['y_proba'] = model.predict_proba(df.X)[:,1]
-        res = df.groupby('entityA').apply(Score.tm_rank, ret=ret)
-        n = len(df[df.Y == True].index.get_level_values('entityA').unique())
+        res = df.groupby(groupby_key).apply(Score.tm_rank, ret=ret)
+        n = len(df[df.Y == True].index.get_level_values(groupby_key).unique())
         return res.value_counts().get(True, 0) / n
 
 
 class NamedFeatureSelector(SelectorMixin, TransformerMixin):
-    def __init__(self, columns, selected_columns):
-        self.columns = columns
-        self.selected_columns = set(selected_columns)
+    _params_name = set(['columns', 'selected_columns'])
+
+    def __init__(self, columns=None, selected_columns=None):
+        self.columns = columns or []
+        self.selected_columns = set(selected_columns or [])
+
+    def set_params(self, **params):
+        if not params:
+            # Simple optimization to gain speed (inspect is slow)
+            return self
+        valid_params = dict()
+        for k, v in params.items():
+            if (k in self._params_name):
+                valid_params[k] = v
+        
+        for k, v in valid_params.items():
+            setattr(self, k, v)
+        
+        return self
 
     def _get_support_mask(self):
         mask = np.array(list(map(lambda x: x in self.selected_columns, self.columns)))
@@ -284,14 +300,14 @@ class Bootstrap:
         X = data.drop('Y', axis=1)
         Y = data['Y']
         Y_pred = model.predict(X)
-        stats = (f1_score(Y, Y_pred), precision_score(Y, Y_pred), recall_score(Y, Y_pred))
+        stats = (f1_score(Y, Y_pred, zero_division=0), precision_score(Y, Y_pred, zero_division=0), recall_score(Y, Y_pred, zero_division=0))
         return stats
     
     @staticmethod
-    def score(model, df, rep=1000, rate=1):
+    def score(model, df, rep=1000, rate=1, verbose=False):
         statistics = []
         for i in range(rep):
-            if i % 50 == 0:   
+            if verbose and (i % 50 == 0):   
                 log.info(f"Bootstrap iteration {i} over {rep}")
 
             test = Bootstrap.sample(df, rate)
@@ -304,9 +320,12 @@ class Bootstrap:
             mu = stats.mean()
             std = stats.std()
             alpha = 0.05
-            st = (mu - stats) / std
-            q1 = mu - np.quantile(st, 1-0.5*alpha)*std
-            q2 = mu - np.quantile(st, 0.5*alpha)*std
+            if std > 0:
+                st = (mu - stats) / std
+                q1 = mu - np.quantile(st, 1-0.5*alpha)*std
+                q2 = mu - np.quantile(st, 0.5*alpha)*std
+            else:
+                q1 = q2 = mu
             results[name] = {
                 'mean': mu,
                 'std': std,
