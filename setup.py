@@ -29,7 +29,8 @@ REQUIRED = [
     'sqlalchemy',
     'scikit-learn',
     'dask',
-    'dask[dataframe]'
+    'dask[dataframe]',
+    'matplotlib'
 ]
 
 here = os.path.abspath(os.path.dirname(__file__))

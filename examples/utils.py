@@ -1,17 +1,18 @@
 # coding: utf-8
+
 import os
 
 import pandas as pd
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
-from sklearn.metrics import average_precision_score
 
 from dmatch.utils import CSV_READ_FORMAT
 from dmatch.utils import Bootstrap, Score
 
 
-def get_path(index_dir, index_name):
-    train = os.path.join(index_dir, index_name + "_train")
-    test = os.path.join(index_dir, index_name + "_test")
+def get_path(indexname):
+    root = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
+    train = os.path.join(root, 'index', indexname + "_train")
+    test = os.path.join(root, 'index', indexname + "_test")
     return train, test
 
 
@@ -34,10 +35,10 @@ def load_dataframe(indexpath, reference):
     df = scores.merge(reference, on=['entityA', 'entityB'])
     return df
 
-def load_data(index_dir, index_name, reference_name, mapper):
-    train, test = get_path(index_dir, index_name)
-    train_df = load_dataframe(train, load_reference(reference_name, mapper['train']))
-    test_df = load_dataframe(test, load_reference(reference_name, mapper['test']))
+def load_data(indexname, refpath, mapper):
+    train, test = get_path(indexname)
+    train_df = load_dataframe(train, load_reference(refpath, mapper['train']))
+    test_df = load_dataframe(test, load_reference(refpath, mapper['test']))
     return  train_df, test_df
     
 
@@ -64,7 +65,6 @@ class Model:
         self.scores = Bootstrap.score(self.best_model, data, rep=rep, rate=1)
         df = data.copy()
         df['y_proba'] = self.best_model.predict_proba(df.drop('Y', axis=1))[:,1]
-        self.scores['average_precision_score'] = average_precision_score(data.Y, self.best_model.predict_proba(data.drop('Y', axis=1))[:, 1])
         self.scores['tm_score_A_to_B'] = Score.tm_score(df, 'entityA')
         self.scores['tm_score_B_to_A'] = Score.tm_score(df, 'entityB')
         return self.scores

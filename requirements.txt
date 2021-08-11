@@ -5,4 +5,5 @@ cloudpickle==1.6.0
 SQLAlchemy==1.4.2
 dask==2021.3.0
 scikit-learn==0.24.1
+matplotlib==3.4.2
 

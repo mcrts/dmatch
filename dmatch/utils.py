@@ -7,9 +7,22 @@ import cloudpickle
 import numpy as np
 import pandas as pd
 from scipy.integrate import quad
-from scipy.stats import gaussian_kde, ks_2samp
+from scipy.stats import (
+    gaussian_kde,
+    ks_2samp,
+    t
+)
+
 from sklearn.feature_selection import SelectorMixin
 from sklearn.base import TransformerMixin
+from sklearn.utils import resample
+from sklearn.metrics import (
+    f1_score,
+    precision_score,
+    recall_score,
+    average_precision_score,
+)
+
 
 from .logger import log
 
@@ -285,22 +298,24 @@ class NamedFeatureSelector(SelectorMixin, TransformerMixin):
         return self
 
 
-from sklearn.utils import resample
-from sklearn.metrics import f1_score, precision_score, recall_score
-from scipy.stats import t
-
 class Bootstrap:
     @staticmethod
     def sample(df, rate=1):
         n = int(len(df.index) * rate)
         return resample(df, n_samples=n)
-    
+
     @staticmethod
     def evaluate(model, data):
         X = data.drop('Y', axis=1)
         Y = data['Y']
         Y_pred = model.predict(X)
-        stats = (f1_score(Y, Y_pred, zero_division=0), precision_score(Y, Y_pred, zero_division=0), recall_score(Y, Y_pred, zero_division=0))
+        Y_proba = model.predict_proba(X)[:, 1]
+        stats = (
+            f1_score(Y, Y_pred, zero_division=0),
+            precision_score(Y, Y_pred, zero_division=0),
+            recall_score(Y, Y_pred, zero_division=0),
+            average_precision_score(Y, Y_proba)
+        )
         return stats
     
     @staticmethod
@@ -316,7 +331,7 @@ class Bootstrap:
         
         statistics = np.array(statistics)
         results = dict()
-        for name, stats in zip(['f1', 'precision', 'recall'], statistics.T):
+        for name, stats in zip(['f1', 'precision', 'recall', 'PR-AUC'], statistics.T):
             mu = stats.mean()
             std = stats.std()
             alpha = 0.05
